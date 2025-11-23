@@ -3,15 +3,5 @@
     "collection_name": "deepak_seminar",
     "page_count": 20,
     "path": "chroma_stores\\deepak_seminar"
-  },
-  "AshuAuditReport.pdf": {
-    "collection_name": "ashuauditreport",
-    "page_count": 14,
-    "path": "chroma_stores\\ashuauditreport"
-  },
-  "sjf_readme.pdf": {
-    "collection_name": "sjf_readme",
-    "page_count": 1,
-    "path": "chroma_stores\\sjf_readme"
   }
 }
