@@ -1,45 +1,41 @@
-import React, { useState, createContext } from "react";
-import Header from "../Layout/Header";
+import React, { useContext, useState } from "react";
+import Header from "./Header";
 import ChatWindow from "../Chat/ChatWindow";
 import ChatInput from "../Chat/ChatInput";
 import SettingsModal from "../Modals/SettingModal";
-
-export const ThemeContext = createContext();
+import Sidebar from "../Sidebar/Sidebar";
+import { ThemeContext } from "../../context/ThemeContext";
 
 const AppLayout = () => {
-  const [theme, setTheme] = useState("light");
+  const { theme, toggleTheme } = useContext(ThemeContext);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const toggleTheme = () => {
-    setTheme(prev => (prev === "light" ? "dark" : "light"));
+  const [chats, setChats] = useState([{ title: "Chat 1" }, { title: "Project Discussion" }]);
+  const [activeChat, setActiveChat] = useState(0);
+
+  const newChat = () => {
+    setChats([{ title: `Chat ${chats.length + 1}` }, ...chats]);
+    setActiveChat(0);
   };
 
-  const openSettings = () => setIsSettingsOpen(true);
-  const closeSettings = () => setIsSettingsOpen(false);
-
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <div className={`${theme === "light" ? "bg-gray-100" : "bg-gray-900"} h-screen w-screen flex flex-col`}>
-        <Header openSettings={openSettings} />
+    <div className={`${theme === "light" ? "bg-gray-100" : "bg-gray-900"} h-screen w-screen flex`}>
+      <Sidebar chats={chats} onNewChat={newChat} onSelectChat={(id) => setActiveChat(id)} />
 
-      
-        <main className="flex-1 overflow-y-auto p-4">
+      <div className="flex flex-col flex-1">
+        <Header openSettings={() => setIsSettingsOpen(true)} />
+
+        <div className="flex-1 overflow-y-auto">
           <ChatWindow />
-        </main>
+        </div>
 
-   
         <ChatInput />
-
-       
-        {isSettingsOpen && (
-          <SettingsModal 
-            closeSettings={closeSettings}
-            toggleTheme={toggleTheme}
-            currentTheme={theme}
-          />
-        )}
       </div>
-    </ThemeContext.Provider>
+
+      {isSettingsOpen && (
+        <SettingsModal closeSettings={() => setIsSettingsOpen(false)} currentTheme={theme} toggleTheme={toggleTheme} />
+      )}
+    </div>
   );
 };
 

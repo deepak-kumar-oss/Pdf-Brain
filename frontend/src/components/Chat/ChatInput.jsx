@@ -1,23 +1,42 @@
 import React, { useState, useContext } from "react";
 import { ChatContext } from "../../context/ChatContext";
+import UploadButton from "./UploadButton";
 
 const ChatInput = () => {
   const [input, setInput] = useState("");
+  const [file, setFile] = useState(null);
   const { sendMessage } = useContext(ChatContext);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    sendMessage(input);
+  const handleSend = async () => {
+    if (!input.trim() && !file) return;
+    await sendMessage({ text: input, file });
     setInput("");
+    setFile(null);
   };
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black">
-      <div className="max-w-4xl mx-auto px-6 py-4">
-        <div className="flex gap-3 items-center">
+    <div className="
+      fixed bottom-0 left-0 right-0 
+      bg-gradient-to-t from-gray-100/90 dark:from-gray-900/90 
+      backdrop-blur-sm 
+      pb-6 pt-4 flex justify-center
+    ">
+      <div className="w-full max-w-3xl px-4">
+        {file && (
+          <div className="mb-2 flex items-center gap-3 bg-gray-200 dark:bg-neutral-800 px-3 py-2 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm">
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+              {file.name}
+            </span>
+            <button onClick={() => setFile(null)} className="text-red-500">✕</button>
+          </div>
+        )}
+
+        <div className="flex items-center bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-full px-4 py-2 shadow-lg">
+          <UploadButton onFileSelect={setFile} />
+
           <input
-            className="flex-1 px-4 py-3 bg-transparent border border-gray-300 dark:border-gray-700 rounded-full text-black dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-black dark:focus:border-white transition-colors duration-200 font-light"
-            placeholder="Ask something..."
+            className="flex-1 bg-transparent px-3 outline-none text-sm"
+            placeholder="Message PDF Brian..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
@@ -25,22 +44,14 @@ const ChatInput = () => {
 
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 disabled:bg-gray-300 dark:disabled:bg-gray-800 disabled:cursor-not-allowed transition-colors duration-200"
+            className={`
+              px-3 py-2 rounded-full text-white text-sm
+              ${input.trim() || file
+                ? "bg-black dark:bg-white dark:text-black"
+                : "bg-gray-300 dark:bg-neutral-700 cursor-not-allowed text-gray-500"}
+            `}
           >
-            <svg 
-              className="w-5 h-5" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M14 5l7 7m0 0l-7 7m7-7H3" 
-              />
-            </svg>
+            ➤
           </button>
         </div>
       </div>

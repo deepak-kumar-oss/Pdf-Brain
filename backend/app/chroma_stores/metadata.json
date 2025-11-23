@@ -8,5 +8,10 @@
     "collection_name": "ashuauditreport",
     "page_count": 14,
     "path": "chroma_stores\\ashuauditreport"
+  },
+  "sjf_readme.pdf": {
+    "collection_name": "sjf_readme",
+    "page_count": 1,
+    "path": "chroma_stores\\sjf_readme"
   }
 }

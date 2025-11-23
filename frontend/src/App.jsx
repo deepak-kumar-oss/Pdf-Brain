@@ -1,7 +1,7 @@
 import React from "react";
-import ChatPage from "./pages/ChatPage";
 import { ChatProvider } from "./context/ChatContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import ChatPage from "./pages/ChatPage";
 
 const App = () => {
   return (

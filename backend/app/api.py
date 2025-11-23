@@ -8,10 +8,10 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-# New Google GenAI SDK
+
 import google.generativeai as genai
 
-# New LangChain Google integration (v3+)
+
 from langchain_google_genai import (
     GoogleGenerativeAIEmbeddings,
     ChatGoogleGenerativeAI
@@ -23,9 +23,6 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 
 
-# =====================================================
-# FASTAPI + CORS
-# =====================================================
 
 app = FastAPI()
 
@@ -36,10 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# =====================================================
-# HELPERS
-# =====================================================
 
 def force_api_key(api_key: str):
     """Ensure Gemini uses only API key (no ADC)."""
@@ -62,11 +55,11 @@ def hash_text(text: str):
 
 def sanitize_collection_name(filename: str) -> str:
     """Convert filename to valid Chroma collection name."""
-    # Remove extension and special chars
+   
     name = os.path.splitext(filename)[0]
-    # Replace invalid chars with underscore
+    
     name = ''.join(c if c.isalnum() or c in '_-' else '_' for c in name)
-    # Chroma requires 3-63 chars, starts/ends with alphanumeric
+    
     name = name[:63].strip('_-')
     if len(name) < 3:
         name = name + '_pdf'
@@ -146,9 +139,6 @@ def format_answer(text):
     return text.strip()
 
 
-# =====================================================
-# UPLOAD SINGLE PDF + INDEX
-# =====================================================
 
 @app.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...), api_key: str = Form(...)):
@@ -157,23 +147,23 @@ async def upload_pdf(file: UploadFile = File(...), api_key: str = Form(...)):
 
     force_api_key(api_key)
 
-    # Check if already indexed
+   
     existing = get_pdf_metadata()
     if file.filename in existing:
         return {"error": f"PDF '{file.filename}' already indexed. Delete it first or upload with a different name."}
 
-    # Save PDF
+  
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(await file.read())
         pdf_path = tmp.name
 
-    # Load PDF
+  
     try:
         loader = PyPDFLoader(pdf_path)
         pages = loader.load()
         page_count = len(pages)
         
-        # Add source filename to metadata
+        
         for page in pages:
             page.metadata["source_file"] = file.filename
     finally:
@@ -182,23 +172,23 @@ async def upload_pdf(file: UploadFile = File(...), api_key: str = Form(...)):
         except:
             pass
 
-    # Split
+  
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1500, chunk_overlap=200
     )
     chunks = splitter.split_documents(pages)
 
-    # Embeddings
+   
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/text-embedding-004",
         task_type="retrieval_document",
         api_key=api_key
     )
 
-    # Create dedicated vectorstore for this PDF
+
     collection_name = create_vectorstore_for_pdf(chunks, embeddings, file.filename)
     
-    # Save metadata
+   
     save_pdf_metadata(file.filename, collection_name, page_count)
 
     return {
@@ -209,9 +199,7 @@ async def upload_pdf(file: UploadFile = File(...), api_key: str = Form(...)):
     }
 
 
-# =====================================================
-# UPLOAD MULTIPLE PDFs + INDEX
-# =====================================================
+
 
 @app.post("/upload-pdfs")
 async def upload_pdfs(files: List[UploadFile] = File(...), api_key: str = Form(...)):
@@ -235,36 +223,36 @@ async def upload_pdfs(files: List[UploadFile] = File(...), api_key: str = Form(.
 
     for file in files:
         try:
-            # Skip if already indexed
+          
             if file.filename in existing:
                 errors.append(f"{file.filename}: Already indexed")
                 continue
 
-            # Save PDF
+          
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(await file.read())
                 pdf_path = tmp.name
 
-            # Load PDF
+           
             try:
                 loader = PyPDFLoader(pdf_path)
                 pages = loader.load()
                 page_count = len(pages)
                 
-                # Add source filename to metadata
+                
                 for page in pages:
                     page.metadata["source_file"] = file.filename
                 
-                # Split
+                
                 splitter = RecursiveCharacterTextSplitter(
                     chunk_size=1500, chunk_overlap=200
                 )
                 chunks = splitter.split_documents(pages)
                 
-                # Create dedicated vectorstore for this PDF
+                
                 collection_name = create_vectorstore_for_pdf(chunks, embeddings, file.filename)
                 
-                # Save metadata
+               
                 save_pdf_metadata(file.filename, collection_name, page_count)
                 
                 indexed_files.append({
@@ -293,9 +281,6 @@ async def upload_pdfs(files: List[UploadFile] = File(...), api_key: str = Form(.
     return response
 
 
-# =====================================================
-# LIST INDEXED PDFs
-# =====================================================
 
 @app.get("/list-pdfs")
 async def list_pdfs():
@@ -311,9 +296,6 @@ async def list_pdfs():
     return {"pdfs": pdfs, "count": len(pdfs)}
 
 
-# =====================================================
-# DELETE SPECIFIC PDF
-# =====================================================
 
 @app.delete("/delete-pdf/{pdf_name}")
 async def delete_pdf(pdf_name: str):
@@ -324,20 +306,16 @@ async def delete_pdf(pdf_name: str):
     if pdf_name not in metadata:
         return {"error": f"PDF '{pdf_name}' not found"}
     
-    # Get path and delete vectorstore
+  
     pdf_path = metadata[pdf_name]["path"]
     if os.path.exists(pdf_path):
         shutil.rmtree(pdf_path)
-    
-    # Remove from metadata
+   
     delete_pdf_metadata(pdf_name)
     
     return {"message": f"PDF '{pdf_name}' deleted successfully"}
 
 
-# =====================================================
-# CLEAR ALL PDFs
-# =====================================================
 
 @app.delete("/clear-pdfs")
 async def clear_pdfs():
@@ -351,15 +329,13 @@ async def clear_pdfs():
     return {"message": "No PDFs to clear"}
 
 
-# =====================================================
-# ASK QUESTION (Non-Streaming)
-# =====================================================
+
 
 @app.post("/ask")
 async def ask_question(
     question: str = Form(...), 
     api_key: str = Form(...),
-    pdf_name: Optional[str] = Form(None)  # Optional: query specific PDF
+    pdf_name: Optional[str] = Form(None)  
 ):
     if not api_key:
         return {"answer": "Please enter your API key in settings."}
@@ -377,7 +353,6 @@ async def ask_question(
     if not metadata:
         return {"answer": "No PDFs indexed yet. Please upload a PDF first."}
 
-    # Determine which PDFs to query
     if pdf_name:
         if pdf_name not in metadata:
             return {"answer": f"PDF '{pdf_name}' not found."}
@@ -385,7 +360,7 @@ async def ask_question(
     else:
         pdfs_to_query = metadata
 
-    # Retrieve from each PDF's vectorstore
+  
     all_docs = []
     
     for name, info in pdfs_to_query.items():
@@ -409,10 +384,10 @@ async def ask_question(
     if not all_docs:
         return {"answer": "No relevant information found in the indexed PDFs."}
 
-    # Sort by relevance (if available) and take top results
+   
     all_docs = all_docs[:8]
 
-    # Build context with source information
+ 
     context_parts = []
     for doc in all_docs:
         source = doc.metadata.get("source_file", "Unknown")
@@ -421,7 +396,7 @@ async def ask_question(
     
     context = "\n\n---\n\n".join(context_parts)
 
-    # LLM
+
     llm = ChatGoogleGenerativeAI(
         model="models/gemini-2.0-flash",
         temperature=0,
@@ -449,9 +424,6 @@ Question:
     return {"answer": format_answer(answer_text)}
 
 
-# =====================================================
-# ASK QUESTION (Streaming)
-# =====================================================
 
 @app.post("/ask-stream")
 async def ask_question_stream(
@@ -479,7 +451,7 @@ async def ask_question_stream(
             yield "No PDFs indexed yet. Please upload a PDF first."
         return StreamingResponse(error_stream(), media_type="text/plain")
 
-    # Determine which PDFs to query
+   
     if pdf_name:
         if pdf_name not in metadata:
             async def error_stream():
@@ -489,7 +461,7 @@ async def ask_question_stream(
     else:
         pdfs_to_query = metadata
 
-    # Retrieve from each PDF's vectorstore
+
     all_docs = []
     
     for name, info in pdfs_to_query.items():
@@ -515,10 +487,10 @@ async def ask_question_stream(
             yield "No relevant information found in the indexed PDFs."
         return StreamingResponse(error_stream(), media_type="text/plain")
 
-    # Sort by relevance and take top results
+ 
     all_docs = all_docs[:8]
 
-    # Build context with source information
+
     context_parts = []
     for doc in all_docs:
         source = doc.metadata.get("source_file", "Unknown")
@@ -527,7 +499,7 @@ async def ask_question_stream(
     
     context = "\n\n---\n\n".join(context_parts)
 
-    # LLM with streaming
+
     llm = ChatGoogleGenerativeAI(
         model="models/gemini-2.0-flash",
         temperature=0,
@@ -559,3 +531,9 @@ Question:
             yield f"\n\nError: {e}"
 
     return StreamingResponse(generate(), media_type="text/plain")
+
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("api:app", host="0.0.0.0", port=8000)
